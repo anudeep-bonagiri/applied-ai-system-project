@@ -1,90 +1,80 @@
-# 🎵 Music Recommender Simulation
+# 🎵 Music Recommender Simulation - Final Project: "AI DJ Agent"
 
-## Project Summary
+**Original Project:** Music Recommender Simulation (Module 1-3)
+*Summary of original project:* The original project was a Python-based content-matching algorithm that simulated a recommendation engine. It matched a hard-coded user "taste profile" against a CSV catalog of songs using a weighted point system for genre, mood, and energy, returning the top matches.
 
-In this project you will build and explain a small music recommender system.
+## Title and Summary: The AI DJ Agent
+This project transforms the original hard-coded recommender into a conversational **AI DJ Agent**. It matters because users don't think in JSON or strict parameters (like `{"genre": "pop", "energy": 0.8}`); they think in natural language. By using an Agentic RAG workflow, the system allows users to naturally express what they want to hear, intelligently extracts the exact search parameters needed, queries the catalog as a tool, and then introduces the playlist back to the user like a real DJ.
 
-Your goal is to:
+## System Architecture Overview
 
-- Represent songs and a user "taste profile" as data
-- Design a scoring rule that turns that data into recommendations
-- Evaluate what your system gets right and wrong
-- Reflect on how this mirrors real world AI recommenders
+```mermaid
+graph TD
+    User([User]) -->|Natural Language Prompt| StreamlitUI[Streamlit Chat Interface]
+    StreamlitUI -->|Chat Message| Agent[Gemini 2.5 Flash Agent]
+    
+    subgraph AI DJ System
+        Agent
+        Agent -.->|Needs Catalog Data| ToolCall[get_music_recommendations]
+    end
+    
+    subgraph Existing Logic
+        ToolCall --> Recommender[src/recommender.py]
+        Recommender --> CSV[(data/songs.csv)]
+    end
+    
+    Recommender -->|JSON Results| Agent
+    Agent -->|Generated Response| StreamlitUI
+    
+    subgraph Reliability
+        ToolCall -.->|Logs parameters| Logger[agent_tool_calls.log]
+    end
+```
 
-This version of the music recommender simulates content-based filtering by comparing the user's specific feature preferences (like genre, mood, and energy) with the attributes of songs in our catalog. By scoring each song according to how closely it matches a target "taste profile", we generate tailored song suggestions and transparently explain why each song was chosen.
+The system uses a Streamlit frontend where users chat with the Gemini LLM. The LLM acts as an Agent equipped with a tool (`get_music_recommendations`). When the user asks for music, the Agent calls the tool, which executes the original `recommender.py` scoring logic against the CSV file. The results are passed back to the Agent, which generates a personalized response. The system also logs tool calls to `agent_tool_calls.log` for reliability testing.
 
----
+## Setup Instructions
 
-## How The System Works
-
-The recommendation engine functions as a weighted point system. Every track in the `data/songs.csv` catalog is given points based on its similarity to the target `UserProfile`.
-- **Features Used:** `genre` (string), `mood` (string), `energy` (float 0.0-1.0).
-- **Scoring Recipe:**
-  - **Genre Match:** +2.0 points if the song's genre perfectly matches the user profile's target genre.
-  - **Mood Match:** +1.0 point if the song's mood matches the user profile's target mood.
-  - **Energy Proximity:** Up to +1.0 point based on how close the song's energy is to the user's target energy. The difference is subtracted from 1.0. The closer the energy level, the higher the score.
-  
-The model assesses every song individually, compiles the scores, and sorts the list in descending order to output the Top N suggestions.
-
----
-
-## Getting Started
-
-### Setup
-
-1. Create a virtual environment (optional but recommended):
-
+1. Clone this repository and navigate to the root directory.
+2. Create and activate a virtual environment:
    ```bash
    python -m venv .venv
-   source .venv/bin/activate      # Mac or Linux
-   .venv\Scripts\activate         # Windows
+   source .venv/bin/activate
    ```
-
-2. Install dependencies
-
+3. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
-
-3. Run the app:
-
+4. Set up your Gemini API Key. You can either:
+   - Create a `.env` file in the root directory and add: `GEMINI_API_KEY=your_key_here`
+   - OR run the app and input it directly into the Streamlit UI sidebar.
+5. Run the application:
    ```bash
-   python -m src.main
+   streamlit run app.py
    ```
 
-### Running Tests
+## Sample Interactions
 
-Run the starter tests with:
+**Input 1:** *"I'm super exhausted, I need something to chill to while I study."*
+**Output 1:** *The Agent calls the tool with `genre=lofi, mood=focused, energy=0.2`. It then responds with: "I've got the perfect chill vibes for your study session. I'm spinning 'Midnight Studies' by Lofi Dreamer. It's perfectly focused and has that low-energy acousticness you need right now..."*
 
-```bash
-pytest
-```
+**Input 2:** *"Give me some high energy rock for my workout!"*
+**Output 2:** *The Agent calls the tool with `genre=rock, mood=intense, energy=0.95`. It responds: "Let's get that heart rate up! I pulled 'Thunder Strike' and 'Electric Pulse' for you. Both scored top marks for intense mood and heavy energy..."*
 
-You can add more tests in `tests/test_recommender.py`.
+## Design Decisions
+- **Streamlit for UI:** Chosen because it allowed for rapid deployment of a clean, interactive chat interface without writing complex front-end code.
+- **Agentic Tool-Calling over Basic Prompting:** Instead of just sending the CSV text to the LLM (which is inefficient and scales poorly), wrapping the existing algorithm as a tool allows the LLM to search dynamically and keeps the core business logic in Python.
+- **Logging for Reliability:** By logging the extracted parameters to a file, we can audit if the LLM is actually hallucinating parameters or using the tool correctly.
 
----
+## Testing Summary
+- **Unit Tests (`test_agent.py`):** I wrote automated Pytest checks that verify if the tool wrapper correctly parses parameters and executes the underlying recommender logic. 
+- **Results:** The tests pass successfully. The AI consistently passes well-formatted parameters to the tool. However, occasionally if asked for a very obscure genre not in the dataset, the Agent gracefully apologizes and provides the closest match instead of crashing.
 
-## Experiments You Tried
+## 🚀 Stretch Features Completed (Max Points!)
+1. **RAG Enhancement (+2):** The agent now searches a second custom data source (`data/artist_info.csv`) using the `get_artist_background` tool to enrich its responses with fun facts.
+2. **Agentic Workflow Enhancement (+2):** Implemented multi-step reasoning. The agent first calls the song recommender, then uses the results to call the artist background tool. The intermediate steps are visibly observable in the Streamlit UI under "Agentic Steps Taken".
+3. **Fine-Tuning / Specialization (+2):** The agent's baseline output is heavily constrained using few-shot prompting in its `system_instruction`. It has a specialized "Gen-Z DJ Persona" and consistently uses highly specific slang (e.g., "banger", "vibes", "no cap").
+4. **Test Harness (+2):** Built `scripts/evaluate_system.py`, an automated evaluation script that runs predefined inputs through the system and prints a Pass/Fail report based on tool usage and tone adherence.
 
-- **Conflicting Profiles:** I created an adversarial user profile that liked "classical" genre but had an intensely high target "energy" of 0.99. Interestingly, "Symphony No 9 by Beethoven" was ranked first because of the heavy genre score weight (+2.0 points), despite having an energy penalty compared to some electronic/dance songs.
-- **Varying Energy Targets:** When lowering target energy, the recommender beautifully shifted towards acoustic, ambient, or chill songs, demonstrating that numerical features are critical to balancing the binary genre/mood matches.
-
----
-
-## Limitations and Risks
-
-- **Filter Bubbles & Exploration:** Due to the strict weighting system giving heavy importance to genre (+2.0), the model is trapped inside "filter bubbles". It rarely suggests high-quality tracks that match the vibe/mood but are cataloged under a slightly differing genre.
-- **Sparse Options:** We are only using a catalog of 18 songs, making it difficult to generate highly diverse recommendations.
-- **Subjective Categorization:** The static `mood` field is subjective and cannot adequately capture hybrid feelings that a real user experiences.
-
----
-
-## Reflection
-
-Read and complete `model_card.md`:
-
-[**Model Card**](model_card.md)
-
-Through this project, I realized how data is seamlessly translated into algorithmic predictions with just arithmetic. Designing the weights (+2 for genre vs +1 for mood) forced me to acknowledge that an algorithm's output relies entirely on the human assumptions injected into those parameters.
-
-I also saw firsthand how easily a predictive system can form biases or "filter bubles". By weighting genre heavily, I noticed that certain high-energy pop enthusiasts missed out on intense rock songs or EDM songs that matched their energy target perfectly, all because the exact genre string didn't align. This illustrates that real recommendation algorithms (like those on TikTok or Spotify) must balance historical matching with "unknown exploration" in order to properly build an open, fair, and diverse content ecosystem.
+## Demo Video
+[Insert Loom Video Link Here]

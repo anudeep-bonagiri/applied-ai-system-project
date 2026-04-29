@@ -1,0 +1,20 @@
+graph TD
+    User([User]) -->|Natural Language Prompt| StreamlitUI[Streamlit Chat Interface]
+    StreamlitUI -->|Chat Message| Agent[Gemini 2.5 Flash Agent]
+    
+    subgraph AI DJ System
+        Agent
+        Agent -.->|Needs Catalog Data| ToolCall[get_music_recommendations]
+    end
+    
+    subgraph Existing Logic
+        ToolCall --> Recommender[src/recommender.py]
+        Recommender --> CSV[(data/songs.csv)]
+    end
+    
+    Recommender -->|JSON Results| Agent
+    Agent -->|Generated Response| StreamlitUI
+    
+    subgraph Reliability
+        ToolCall -.->|Logs parameters| Logger[agent_tool_calls.log]
+    end
