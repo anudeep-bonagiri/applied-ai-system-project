@@ -77,4 +77,4 @@ The system uses a Streamlit frontend where users chat with the Gemini LLM. The L
 4. **Test Harness (+2):** Built `scripts/evaluate_system.py`, an automated evaluation script that runs predefined inputs through the system and prints a Pass/Fail report based on tool usage and tone adherence.
 
 ## Demo Video
-[Insert Loom Video Link Here]
+https://www.loom.com/share/ea94f7e7b91c44e19a5aa93fb34dfb25
